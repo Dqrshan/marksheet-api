@@ -1,0 +1,16 @@
+# The documentation and the examples in this repository are MIT licensed.
+#
+# The API itself is not covered by the MIT license. It is licensed for use by
+# anyone, for any purpose, under the API Use Grant in TERMS.md.
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# editors
+.idea/
+.vscode/
+*.swp
+
+# node, only if you generate an SDK client from openapi.json
+node_modules/
