@@ -1,0 +1,1012 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "marksheet API",
+    "version": "1.0.0",
+    "summary": "VTU scheme, syllabus and subject data as JSON.",
+    "description": "The VTU scheme tables for the 2022 and 2025 regulations, as JSON.\n\nEvery response is CORS enabled and cached for a day, so you can call the API directly from a browser, a script, a server or a generated SDK client.\n\nThe data is the same set the [marksheet calculator](https://vtu.drshn.tech/calculator) uses: branch list, semester list, and every course with its code, title, credits and course type.",
+    "termsOfService": "https://vtu.drshn.tech/api/terms",
+    "contact": {
+      "name": "marksheet",
+      "url": "https://vtu.drshn.tech"
+    },
+    "license": {
+      "name": "API Use Grant",
+      "url": "TERMS.md",
+      "identifier": "LicenseRef-marksheet-api"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://vtu.drshn.tech",
+      "description": "Production"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Schemes",
+      "description": "Scheme level endpoints."
+    },
+    {
+      "name": "Branches",
+      "description": "Branch level endpoints."
+    },
+    {
+      "name": "Semesters",
+      "description": "Semester level endpoints."
+    }
+  ],
+  "paths": {
+    "/api": {
+      "get": {
+        "tags": [
+          "Schemes"
+        ],
+        "summary": "List the available schemes",
+        "operationId": "listSchemes",
+        "description": "The index of every scheme, with its regulation code, the semesters it covers and the size of the dataset.",
+        "responses": {
+          "200": {
+            "description": "The scheme index.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemeIndex"
+                }
+              }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "Always `*`. The API can be called from any origin.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache lifetime for the response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "CORS preflight",
+        "responses": {
+          "204": {
+            "description": "Preflight accepted."
+          }
+        }
+      }
+    },
+    "/api/schemes": {
+      "get": {
+        "tags": [
+          "Schemes"
+        ],
+        "summary": "List the schemes with their rules",
+        "operationId": "listSchemesDetailed",
+        "description": "The scheme index with the grade scale and the percentage rule attached to every scheme.",
+        "responses": {
+          "200": {
+            "description": "The scheme index with grade scale and rules.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemeSummaryList"
+                }
+              }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "Always `*`. The API can be called from any origin.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache lifetime for the response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "CORS preflight",
+        "responses": {
+          "204": {
+            "description": "Preflight accepted."
+          }
+        }
+      }
+    },
+    "/api/schemes/{scheme}": {
+      "get": {
+        "tags": [
+          "Schemes"
+        ],
+        "summary": "Fetch one scheme in full",
+        "operationId": "getScheme",
+        "description": "Every branch, every semester and every course of a scheme. This is the largest response and is meant for bulk use. Prefer the branch and semester endpoints when you only need part of it.",
+        "parameters": [
+          {
+            "name": "scheme",
+            "in": "path",
+            "required": true,
+            "description": "The scheme id. Either `2022` or `2025`.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "2022",
+                "2025"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The complete scheme.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scheme"
+                }
+              }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "Always `*`. The API can be called from any origin.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache lifetime for the response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The scheme, branch or semester does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The scheme dataset is not available on the server.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "CORS preflight",
+        "responses": {
+          "204": {
+            "description": "Preflight accepted."
+          }
+        }
+      }
+    },
+    "/api/schemes/{scheme}/branches": {
+      "get": {
+        "tags": [
+          "Branches"
+        ],
+        "summary": "List the branches of a scheme",
+        "operationId": "listBranches",
+        "description": "Every branch in a scheme, with the semesters it has and the course and credit totals of the branch.",
+        "parameters": [
+          {
+            "name": "scheme",
+            "in": "path",
+            "required": true,
+            "description": "The scheme id. Either `2022` or `2025`.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "2022",
+                "2025"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The branch list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchList"
+                }
+              }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "Always `*`. The API can be called from any origin.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache lifetime for the response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The scheme, branch or semester does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The scheme dataset is not available on the server.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "CORS preflight",
+        "responses": {
+          "204": {
+            "description": "Preflight accepted."
+          }
+        }
+      }
+    },
+    "/api/schemes/{scheme}/branches/{branch}": {
+      "get": {
+        "tags": [
+          "Branches"
+        ],
+        "summary": "Fetch one branch",
+        "operationId": "getBranch",
+        "description": "One branch with the course count and credit total of each of its semesters.",
+        "parameters": [
+          {
+            "name": "scheme",
+            "in": "path",
+            "required": true,
+            "description": "The scheme id. Either `2022` or `2025`.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "2022",
+                "2025"
+              ]
+            }
+          },
+          {
+            "name": "branch",
+            "in": "path",
+            "required": true,
+            "description": "The branch key, exactly as it appears in the branch list.",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "cs",
+                "cse",
+                "ece",
+                "mech"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The branch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchDetail"
+                }
+              }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "Always `*`. The API can be called from any origin.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache lifetime for the response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The scheme, branch or semester does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The scheme dataset is not available on the server.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "CORS preflight",
+        "responses": {
+          "204": {
+            "description": "Preflight accepted."
+          }
+        }
+      }
+    },
+    "/api/schemes/{scheme}/branches/{branch}/semesters/{semester}": {
+      "get": {
+        "tags": [
+          "Semesters"
+        ],
+        "summary": "Fetch the courses of one semester",
+        "operationId": "getSemester",
+        "description": "Every course of one semester, with its code, title, credits and course type. Only courses with credits above zero count towards the SGPA.",
+        "parameters": [
+          {
+            "name": "scheme",
+            "in": "path",
+            "required": true,
+            "description": "The scheme id. Either `2022` or `2025`.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "2022",
+                "2025"
+              ]
+            }
+          },
+          {
+            "name": "branch",
+            "in": "path",
+            "required": true,
+            "description": "The branch key, exactly as it appears in the branch list.",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "cs",
+                "cse",
+                "ece",
+                "mech"
+              ]
+            }
+          },
+          {
+            "name": "semester",
+            "in": "path",
+            "required": true,
+            "description": "The semester number, exactly as it appears in the branch response.",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The courses of the semester.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Semester"
+                }
+              }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "Always `*`. The API can be called from any origin.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache lifetime for the response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The scheme, branch or semester does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The scheme dataset is not available on the server.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "CORS preflight",
+        "responses": {
+          "204": {
+            "description": "Preflight accepted."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "What was missing.",
+            "examples": [
+              "Unknown scheme \"2030\""
+            ]
+          }
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "required": [
+          "branches",
+          "courses",
+          "credits"
+        ],
+        "properties": {
+          "branches": {
+            "type": "integer"
+          },
+          "courses": {
+            "type": "integer"
+          },
+          "credits": {
+            "type": "number"
+          }
+        }
+      },
+      "GradeScaleEntry": {
+        "type": "object",
+        "required": [
+          "grade",
+          "points",
+          "min",
+          "max",
+          "label"
+        ],
+        "properties": {
+          "grade": {
+            "type": "string",
+            "examples": [
+              "O",
+              "A+",
+              "P"
+            ]
+          },
+          "points": {
+            "type": "number",
+            "examples": [
+              10,
+              9,
+              4
+            ]
+          },
+          "min": {
+            "type": "integer",
+            "description": "Lowest mark in this band."
+          },
+          "max": {
+            "type": "integer",
+            "description": "Highest mark in this band."
+          },
+          "label": {
+            "type": "string",
+            "examples": [
+              "Outstanding"
+            ]
+          }
+        }
+      },
+      "PercentageRules": {
+        "type": "object",
+        "required": [
+          "formula",
+          "note",
+          "cgpa",
+          "sgpa"
+        ],
+        "properties": {
+          "formula": {
+            "type": "string",
+            "examples": [
+              "Percentage = CGPA \u00d7 10"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "cgpa": {
+            "type": "string"
+          },
+          "sgpa": {
+            "type": "string"
+          }
+        }
+      },
+      "SchemeSummary": {
+        "type": "object",
+        "required": [
+          "scheme",
+          "name",
+          "regulation",
+          "stats",
+          "semesters"
+        ],
+        "properties": {
+          "scheme": {
+            "type": "string",
+            "examples": [
+              "2022"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "VTU 2022 Scheme"
+            ]
+          },
+          "regulation": {
+            "type": "string",
+            "examples": [
+              "22OB"
+            ]
+          },
+          "stats": {
+            "$ref": "#/components/schemas/Stats"
+          },
+          "semesters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "examples": [
+              [
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8"
+              ]
+            ]
+          }
+        }
+      },
+      "SchemeSummaryList": {
+        "type": "object",
+        "required": [
+          "schemes"
+        ],
+        "properties": {
+          "schemes": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/SchemeSummary"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "gradeScale": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GradeScaleEntry"
+                      }
+                    },
+                    "percentage": {
+                      "$ref": "#/components/schemas/PercentageRules"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "notes": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "SchemeIndex": {
+        "type": "object",
+        "required": [
+          "schemes"
+        ],
+        "properties": {
+          "schemes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchemeSummary"
+            }
+          }
+        }
+      },
+      "Course": {
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "credits",
+          "type"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The course code exactly as the scheme prints it.",
+            "examples": [
+              "BCS301"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "examples": [
+              "Mathematics for Computer Science"
+            ]
+          },
+          "credits": {
+            "type": "number",
+            "description": "Course credits. Courses with zero credits do not count towards the SGPA.",
+            "examples": [
+              4
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "The course category printed in the scheme.",
+            "examples": [
+              "PCC",
+              "IPCC",
+              "PCCL",
+              "ESC",
+              "AEC/ SEC",
+              "UHV"
+            ]
+          }
+        }
+      },
+      "BranchSummary": {
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "semesters",
+          "stats"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "examples": [
+              "cs"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "Computer Science"
+            ]
+          },
+          "semesters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stats": {
+            "type": "object",
+            "required": [
+              "semesters",
+              "courses",
+              "credits"
+            ],
+            "properties": {
+              "semesters": {
+                "type": "integer"
+              },
+              "courses": {
+                "type": "integer"
+              },
+              "credits": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "BranchList": {
+        "type": "object",
+        "required": [
+          "scheme",
+          "name",
+          "regulation",
+          "count",
+          "branches"
+        ],
+        "properties": {
+          "scheme": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "regulation": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "branches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BranchSummary"
+            }
+          }
+        }
+      },
+      "BranchDetail": {
+        "type": "object",
+        "required": [
+          "scheme",
+          "key",
+          "name",
+          "stats",
+          "semesters"
+        ],
+        "properties": {
+          "scheme": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stats": {
+            "type": "object",
+            "required": [
+              "semesters",
+              "courses",
+              "credits"
+            ],
+            "properties": {
+              "semesters": {
+                "type": "integer"
+              },
+              "courses": {
+                "type": "integer"
+              },
+              "credits": {
+                "type": "number"
+              }
+            }
+          },
+          "semesters": {
+            "type": "object",
+            "description": "Keyed by semester number. The value carries the course count and the credit total of that semester.",
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "courses",
+                "credits"
+              ],
+              "properties": {
+                "courses": {
+                  "type": "integer"
+                },
+                "credits": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Semester": {
+        "type": "object",
+        "required": [
+          "scheme",
+          "branch",
+          "semester",
+          "count",
+          "credits",
+          "courses"
+        ],
+        "properties": {
+          "scheme": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "semester": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "credits": {
+            "type": "number",
+            "description": "Total credits of the semester."
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Course"
+            }
+          }
+        }
+      },
+      "Branch": {
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "semesters",
+          "stats"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "semesters": {
+            "type": "object",
+            "description": "Keyed by semester number.",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Course"
+              }
+            }
+          },
+          "stats": {
+            "type": "object",
+            "required": [
+              "semesters",
+              "courses",
+              "credits"
+            ],
+            "properties": {
+              "semesters": {
+                "type": "integer"
+              },
+              "courses": {
+                "type": "integer"
+              },
+              "credits": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "Scheme": {
+        "type": "object",
+        "required": [
+          "scheme",
+          "name",
+          "regulation",
+          "semesters",
+          "stats",
+          "branches"
+        ],
+        "properties": {
+          "scheme": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "regulation": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "gradeScale": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GradeScaleEntry"
+            }
+          },
+          "percentage": {
+            "$ref": "#/components/schemas/PercentageRules"
+          },
+          "semesters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stats": {
+            "$ref": "#/components/schemas/Stats"
+          },
+          "branches": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Branch"
+            }
+          }
+        }
+      }
+    }
+  }
+}
