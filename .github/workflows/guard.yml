@@ -1,0 +1,86 @@
+name: Guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dataset:
+    name: No dataset in the public repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail if a data file is committed
+        run: |
+          set -euo pipefail
+          found=$(find . -path ./.git -prune -o -type f \
+            \( -name '*.pdf' -o -name '*.csv' -o -name '*.xlsx' -o -name '*.db' \
+               -o -name '*.sqlite' -o -name '*.sql' -o -name '*.parquet' \
+               -o -name '*.tar.gz' -o -name '*.zip' -o -name '*.jsonl' \) -print)
+          if [ -n "$found" ]; then
+            echo "These files look like dataset or archive files:"
+            echo "$found"
+            exit 1
+          fi
+
+      - name: Fail if a large file is committed
+        run: |
+          set -euo pipefail
+          found=$(find . -path ./.git -prune -o -type f -size +256k -print)
+          if [ -n "$found" ]; then
+            echo "These files are too large for a documentation repository:"
+            echo "$found"
+            exit 1
+          fi
+
+      - name: Fail if a JSON file carries the scheme table
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          offenders = []
+          for path in pathlib.Path(".").rglob("*.json"):
+              if ".git" in path.parts:
+                  continue
+              try:
+                  data = json.loads(path.read_text())
+              except Exception:
+                  continue
+              if isinstance(data, dict) and "branches" in data:
+                  offenders.append(str(path))
+          if offenders:
+              print("These JSON files carry the scheme table:")
+              print("\n".join(offenders))
+              sys.exit(1)
+          PY
+
+      - name: Fail if the private pipeline is named
+        run: |
+          set -euo pipefail
+          found=$(grep -rIl -E 'extract-schemes|build-schemes|data/schemes-parsed|MKS_API_KEYS|MKS_SESSION_SECRET' . \
+            --exclude-dir=.git --exclude=guard.yml || true)
+          if [ -n "$found" ]; then
+            echo "These files name private internals:"
+            echo "$found"
+            exit 1
+          fi
+
+      - name: Fail if a secret is committed
+        run: |
+          set -euo pipefail
+          found=$(grep -rIl -E 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' . \
+            --exclude-dir=.git || true)
+          if [ -n "$found" ]; then
+            echo "These files look like they carry a credential:"
+            echo "$found"
+            exit 1
+          fi
