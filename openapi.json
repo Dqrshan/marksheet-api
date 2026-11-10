@@ -2,38 +2,46 @@
   "openapi": "3.1.0",
   "info": {
     "title": "marksheet API",
-    "version": "1.0.0",
-    "summary": "VTU scheme, syllabus and subject data as JSON.",
-    "description": "The VTU scheme tables for the 2022 and 2025 regulations, as JSON.\n\nEvery response is CORS enabled and cached for a day, so you can call the API directly from a browser, a script, a server or a generated SDK client.\n\nThe data is the same set the [marksheet calculator](https://vtu.drshn.tech/calculator) uses: branch list, semester list, and every course with its code, title, credits and course type.",
-    "termsOfService": "https://vtu.drshn.tech/api/terms",
+    "version": "2.0.0",
+    "summary": "The VTU scheme tables for the 2022 and 2025 regulations, as JSON.",
+    "description": "Every response is CORS enabled, and the metadata responses are cached for a day.\n\nThe scheme list, the grade scale, the branch list and the credit totals of each semester are open. The courses of a semester need a developer key or a calculator session. The whole scheme in one answer needs a key.\n\nThe data is the same set the [marksheet calculator](https://vtu.drshn.tech/calculator) uses: branch list, semester list, and every course with its code, title, credits and course type.",
+    "termsOfService": "https://dev.vtu.drshn.tech/terms",
     "contact": {
       "name": "marksheet",
-      "url": "https://vtu.drshn.tech"
+      "url": "https://github.com/Dqrshan/marksheet-api"
     },
     "license": {
-      "name": "API Use Grant",
-      "url": "TERMS.md",
-      "identifier": "LicenseRef-marksheet-api"
+      "name": "MIT, for the documentation and the examples",
+      "identifier": "MIT",
+      "url": "https://github.com/Dqrshan/marksheet-api/blob/main/LICENSE"
     }
   },
   "servers": [
     {
-      "url": "https://vtu.drshn.tech",
-      "description": "Production"
+      "url": "https://dev.vtu.drshn.tech",
+      "description": "The API host."
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "A local run of the private repository."
     }
   ],
   "tags": [
     {
       "name": "Schemes",
-      "description": "Scheme level endpoints."
+      "description": "The schemes, their rules and their totals."
     },
     {
       "name": "Branches",
-      "description": "Branch level endpoints."
+      "description": "The branches of a scheme."
     },
     {
       "name": "Semesters",
-      "description": "Semester level endpoints."
+      "description": "The courses of one semester."
+    },
+    {
+      "name": "Sessions",
+      "description": "The session the calculator uses."
     }
   ],
   "paths": {
@@ -42,41 +50,109 @@
         "tags": [
           "Schemes"
         ],
-        "summary": "List the available schemes",
-        "operationId": "listSchemes",
-        "description": "The index of every scheme, with its regulation code, the semesters it covers and the size of the dataset.",
+        "summary": "The scheme index",
+        "operationId": "getIndex",
+        "description": "The list of schemes with their regulation code, semester range and totals.",
+        "security": [],
         "responses": {
           "200": {
-            "description": "The scheme index.",
+            "description": "The schemes and their totals.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "public, max-age=86400, s-maxage=86400"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SchemeIndex"
                 }
               }
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "description": "Always `*`. The API can be called from any origin.",
+            }
+          },
+          "401": {
+            "description": "A key or a session is needed for this route.",
+            "content": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "description": "Cache lifetime for the response.",
-                "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/Error"
                 }
               }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
             }
-          }
-        }
-      },
-      "options": {
-        "summary": "CORS preflight",
-        "responses": {
-          "204": {
-            "description": "Preflight accepted."
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
           }
         }
       }
@@ -86,41 +162,109 @@
         "tags": [
           "Schemes"
         ],
-        "summary": "List the schemes with their rules",
-        "operationId": "listSchemesDetailed",
+        "summary": "The schemes with their rules",
+        "operationId": "getSchemes",
         "description": "The scheme index with the grade scale and the percentage rule attached to every scheme.",
+        "security": [],
         "responses": {
           "200": {
-            "description": "The scheme index with grade scale and rules.",
+            "description": "The schemes, their grade scales and their percentage rules.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "public, max-age=86400, s-maxage=86400"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SchemeSummaryList"
                 }
               }
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "description": "Always `*`. The API can be called from any origin.",
+            }
+          },
+          "401": {
+            "description": "A key or a session is needed for this route.",
+            "content": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "description": "Cache lifetime for the response.",
-                "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/Error"
                 }
               }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
             }
-          }
-        }
-      },
-      "options": {
-        "summary": "CORS preflight",
-        "responses": {
-          "204": {
-            "description": "Preflight accepted."
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
           }
         }
       }
@@ -130,9 +274,10 @@
         "tags": [
           "Schemes"
         ],
-        "summary": "Fetch one scheme in full",
+        "summary": "One scheme",
         "operationId": "getScheme",
-        "description": "Every branch, every semester and every course of a scheme. This is the largest response and is meant for bulk use. Prefer the branch and semester endpoints when you only need part of it.",
+        "description": "The rules, the totals and the semester list of one scheme. The courses are not in this answer, they are read one branch and one semester at a time.",
+        "security": [],
         "parameters": [
           {
             "name": "scheme",
@@ -150,56 +295,119 @@
         ],
         "responses": {
           "200": {
-            "description": "The complete scheme.",
+            "description": "The scheme, its rules and its totals.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "public, max-age=86400, s-maxage=86400"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Scheme"
                 }
               }
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "description": "Always `*`. The API can be called from any origin.",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "description": "Cache lifetime for the response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
             }
           },
           "404": {
-            "description": "The scheme, branch or semester does not exist.",
+            "description": "That scheme does not exist.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "unknown_scheme",
+                "message": "That scheme does not exist."
               }
             }
           },
-          "503": {
-            "description": "The scheme dataset is not available on the server.",
+          "401": {
+            "description": "A key or a session is needed for this route.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
               }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
             }
-          }
-        }
-      },
-      "options": {
-        "summary": "CORS preflight",
-        "responses": {
-          "204": {
-            "description": "Preflight accepted."
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
           }
         }
       }
@@ -209,9 +417,10 @@
         "tags": [
           "Branches"
         ],
-        "summary": "List the branches of a scheme",
-        "operationId": "listBranches",
-        "description": "Every branch in a scheme, with the semesters it has and the course and credit totals of the branch.",
+        "summary": "The branches of a scheme",
+        "operationId": "getBranches",
+        "description": "The branch list of a scheme with the course and credit totals of each branch. The list is paginated.",
+        "security": [],
         "parameters": [
           {
             "name": "scheme",
@@ -225,60 +434,146 @@
                 "2025"
               ]
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "How many branches to return. 50 by default, 200 at most.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Where to start in the list.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The branch list.",
+            "description": "One page of branches.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "public, max-age=86400, s-maxage=86400"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BranchList"
                 }
               }
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "description": "Always `*`. The API can be called from any origin.",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "description": "Cache lifetime for the response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
             }
           },
           "404": {
-            "description": "The scheme, branch or semester does not exist.",
+            "description": "That scheme does not exist.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "unknown_scheme",
+                "message": "That scheme does not exist."
               }
             }
           },
-          "503": {
-            "description": "The scheme dataset is not available on the server.",
+          "401": {
+            "description": "A key or a session is needed for this route.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
               }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
             }
-          }
-        }
-      },
-      "options": {
-        "summary": "CORS preflight",
-        "responses": {
-          "204": {
-            "description": "Preflight accepted."
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
           }
         }
       }
@@ -288,9 +583,10 @@
         "tags": [
           "Branches"
         ],
-        "summary": "Fetch one branch",
+        "summary": "One branch",
         "operationId": "getBranch",
-        "description": "One branch with the course count and credit total of each of its semesters.",
+        "description": "A branch with the course count and the credit total of each of its semesters.",
+        "security": [],
         "parameters": [
           {
             "name": "scheme",
@@ -323,56 +619,119 @@
         ],
         "responses": {
           "200": {
-            "description": "The branch.",
+            "description": "The branch and its semester totals.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "public, max-age=86400, s-maxage=86400"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BranchDetail"
                 }
               }
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "description": "Always `*`. The API can be called from any origin.",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "description": "Cache lifetime for the response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
             }
           },
           "404": {
-            "description": "The scheme, branch or semester does not exist.",
+            "description": "That branch does not exist in this scheme.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "unknown_branch",
+                "message": "That branch does not exist in this scheme."
               }
             }
           },
-          "503": {
-            "description": "The scheme dataset is not available on the server.",
+          "401": {
+            "description": "A key or a session is needed for this route.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
               }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
             }
-          }
-        }
-      },
-      "options": {
-        "summary": "CORS preflight",
-        "responses": {
-          "204": {
-            "description": "Preflight accepted."
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
           }
         }
       }
@@ -382,9 +741,14 @@
         "tags": [
           "Semesters"
         ],
-        "summary": "Fetch the courses of one semester",
+        "summary": "The courses of one semester",
         "operationId": "getSemester",
-        "description": "Every course of one semester, with its code, title, credits and course type. Only courses with credits above zero count towards the SGPA.",
+        "description": "Every course of one semester, with its code, title, credits and course type. Only courses with credits above zero count towards the SGPA.\n\nThis route needs a developer key or a calculator session. With a session the answer is encrypted for that session.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "scheme",
@@ -435,61 +799,418 @@
         "responses": {
           "200": {
             "description": "The courses of the semester.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "private, no-store"
+                  ]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Semester"
                 }
               }
+            }
+          },
+          "404": {
+            "description": "That semester does not exist for this branch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
             },
+            "example": {
+              "error": {
+                "code": "unknown_semester",
+                "message": "That semester does not exist for this branch."
+              }
+            }
+          },
+          "401": {
+            "description": "A key or a session is needed for this route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
+            }
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schemes/{scheme}/export": {
+      "get": {
+        "tags": [
+          "Schemes"
+        ],
+        "summary": "The whole scheme",
+        "operationId": "exportScheme",
+        "description": "Every branch, every semester and every course of a scheme in one answer. A key may take it five times a day.\n\nThis route exists so that a developer who needs everything takes it in one request with a budget, instead of walking every branch and every semester.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scheme",
+            "in": "path",
+            "required": true,
+            "description": "The scheme id. Either `2022` or `2025`.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "2022",
+                "2025"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The whole scheme, with a note about which key took it.",
             "headers": {
               "Access-Control-Allow-Origin": {
-                "description": "Always `*`. The API can be called from any origin.",
+                "description": "The origin that asked, when it is on the allow list.",
                 "schema": {
                   "type": "string"
                 }
               },
-              "Cache-Control": {
-                "description": "Cache lifetime for the response.",
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
                 "schema": {
-                  "type": "string"
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "private, no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scheme"
                 }
               }
             }
           },
           "404": {
-            "description": "The scheme, branch or semester does not exist.",
+            "description": "That scheme does not exist.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
               }
+            },
+            "example": {
+              "error": {
+                "code": "unknown_scheme",
+                "message": "That scheme does not exist."
+              }
             }
           },
-          "503": {
-            "description": "The scheme dataset is not available on the server.",
+          "401": {
+            "description": "A key or a session is needed for this route.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
+            }
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
               }
             }
           }
         }
-      },
-      "options": {
-        "summary": "CORS preflight",
+      }
+    },
+    "/api/session": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Open a calculator session",
+        "operationId": "openSession",
+        "description": "Exchanges the token from the calculator page for a session id and a key. Every later answer for that session is encrypted with AES-GCM.\n\nThe token arrives in the `X-Marksheet-Page-Token` header and is issued by the calculator page. It is what separates the calculator from a script.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Marksheet-Page-Token",
+            "in": "header",
+            "required": true,
+            "description": "The signed page token from the calculator page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "204": {
-            "description": "Preflight accepted."
+          "200": {
+            "description": "The session id, the key and the budgets of the session.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "private, no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The page token is missing, altered or stale.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "invalid_page_token",
+                "message": "The page token is missing, altered or stale."
+              }
+            }
+          },
+          "401": {
+            "description": "A key or a session is needed for this route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
+            }
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
           }
         }
       }
     }
   },
   "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "A developer key. Ask for one and it is sent in this header."
+      }
+    },
     "schemas": {
       "Error": {
         "type": "object",
@@ -498,11 +1219,25 @@
         ],
         "properties": {
           "error": {
-            "type": "string",
-            "description": "What was missing.",
-            "examples": [
-              "Unknown scheme \"2030\""
-            ]
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "A short machine readable name of the problem.",
+                "examples": [
+                  "unknown_branch",
+                  "access_key_required"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "A sentence for the reader. It never carries a path or a server detail."
+              }
+            }
           }
         }
       },
@@ -515,13 +1250,22 @@
         ],
         "properties": {
           "branches": {
-            "type": "integer"
+            "type": "integer",
+            "examples": [
+              43
+            ]
           },
           "courses": {
-            "type": "integer"
+            "type": "integer",
+            "examples": [
+              1604
+            ]
           },
           "credits": {
-            "type": "number"
+            "type": "integer",
+            "examples": [
+              4784
+            ]
           }
         }
       },
@@ -538,26 +1282,26 @@
           "grade": {
             "type": "string",
             "examples": [
-              "O",
-              "A+",
-              "P"
+              "O"
             ]
           },
           "points": {
-            "type": "number",
+            "type": "integer",
             "examples": [
-              10,
-              9,
-              4
+              10
             ]
           },
           "min": {
             "type": "integer",
-            "description": "Lowest mark in this band."
+            "examples": [
+              90
+            ]
           },
           "max": {
             "type": "integer",
-            "description": "Highest mark in this band."
+            "examples": [
+              100
+            ]
           },
           "label": {
             "type": "string",
@@ -569,17 +1313,11 @@
       },
       "PercentageRules": {
         "type": "object",
-        "required": [
-          "formula",
-          "note",
-          "cgpa",
-          "sgpa"
-        ],
         "properties": {
           "formula": {
             "type": "string",
             "examples": [
-              "Percentage = CGPA \u00d7 10"
+              "Percentage = CGPA x 10"
             ]
           },
           "note": {
@@ -628,17 +1366,22 @@
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "examples": [
-              [
-                "3",
-                "4",
-                "5",
-                "6",
-                "7",
-                "8"
-              ]
-            ]
+            }
+          },
+          "gradeScale": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GradeScaleEntry"
+            }
+          },
+          "percentage": {
+            "$ref": "#/components/schemas/PercentageRules"
+          },
+          "source": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
           }
         }
       },
@@ -651,31 +1394,7 @@
           "schemes": {
             "type": "array",
             "items": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/SchemeSummary"
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "gradeScale": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/GradeScaleEntry"
-                      }
-                    },
-                    "percentage": {
-                      "$ref": "#/components/schemas/PercentageRules"
-                    },
-                    "source": {
-                      "type": "string"
-                    },
-                    "notes": {
-                      "type": "string"
-                    }
-                  }
-                }
-              ]
+              "$ref": "#/components/schemas/SchemeSummary"
             }
           }
         }
@@ -705,7 +1424,6 @@
         "properties": {
           "code": {
             "type": "string",
-            "description": "The course code exactly as the scheme prints it.",
             "examples": [
               "BCS301"
             ]
@@ -717,22 +1435,15 @@
             ]
           },
           "credits": {
-            "type": "number",
-            "description": "Course credits. Courses with zero credits do not count towards the SGPA.",
+            "type": "integer",
             "examples": [
               4
             ]
           },
           "type": {
             "type": "string",
-            "description": "The course category printed in the scheme.",
             "examples": [
-              "PCC",
-              "IPCC",
-              "PCCL",
-              "ESC",
-              "AEC/ SEC",
-              "UHV"
+              "PCC/BS C"
             ]
           }
         }
@@ -766,11 +1477,6 @@
           },
           "stats": {
             "type": "object",
-            "required": [
-              "semesters",
-              "courses",
-              "credits"
-            ],
             "properties": {
               "semesters": {
                 "type": "integer"
@@ -779,7 +1485,7 @@
                 "type": "integer"
               },
               "credits": {
-                "type": "number"
+                "type": "integer"
               }
             }
           }
@@ -789,9 +1495,9 @@
         "type": "object",
         "required": [
           "scheme",
-          "name",
-          "regulation",
           "count",
+          "limit",
+          "offset",
           "branches"
         ],
         "properties": {
@@ -805,13 +1511,35 @@
             "type": "string"
           },
           "count": {
-            "type": "integer"
+            "type": "integer",
+            "examples": [
+              43
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "examples": [
+              50
+            ]
+          },
+          "offset": {
+            "type": "integer",
+            "examples": [
+              0
+            ]
           },
           "branches": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/BranchSummary"
             }
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The address of the next page, or null when the list has ended."
           }
         }
       },
@@ -836,11 +1564,6 @@
           },
           "stats": {
             "type": "object",
-            "required": [
-              "semesters",
-              "courses",
-              "credits"
-            ],
             "properties": {
               "semesters": {
                 "type": "integer"
@@ -849,25 +1572,21 @@
                 "type": "integer"
               },
               "credits": {
-                "type": "number"
+                "type": "integer"
               }
             }
           },
           "semesters": {
             "type": "object",
-            "description": "Keyed by semester number. The value carries the course count and the credit total of that semester.",
+            "description": "The course count and the credit total of each semester.",
             "additionalProperties": {
               "type": "object",
-              "required": [
-                "courses",
-                "credits"
-              ],
               "properties": {
                 "courses": {
                   "type": "integer"
                 },
                 "credits": {
-                  "type": "number"
+                  "type": "integer"
                 }
               }
             }
@@ -895,11 +1614,16 @@
             "type": "string"
           },
           "count": {
-            "type": "integer"
+            "type": "integer",
+            "examples": [
+              8
+            ]
           },
           "credits": {
-            "type": "number",
-            "description": "Total credits of the semester."
+            "type": "integer",
+            "examples": [
+              21
+            ]
           },
           "courses": {
             "type": "array",
@@ -914,8 +1638,7 @@
         "required": [
           "key",
           "name",
-          "semesters",
-          "stats"
+          "semesters"
         ],
         "properties": {
           "key": {
@@ -926,7 +1649,6 @@
           },
           "semesters": {
             "type": "object",
-            "description": "Keyed by semester number.",
             "additionalProperties": {
               "type": "array",
               "items": {
@@ -936,11 +1658,6 @@
           },
           "stats": {
             "type": "object",
-            "required": [
-              "semesters",
-              "courses",
-              "credits"
-            ],
             "properties": {
               "semesters": {
                 "type": "integer"
@@ -949,7 +1666,7 @@
                 "type": "integer"
               },
               "credits": {
-                "type": "number"
+                "type": "integer"
               }
             }
           }
@@ -962,10 +1679,12 @@
           "name",
           "regulation",
           "semesters",
-          "stats",
           "branches"
         ],
         "properties": {
+          "schemaVersion": {
+            "type": "integer"
+          },
           "scheme": {
             "type": "string"
           },
@@ -999,10 +1718,68 @@
           "stats": {
             "$ref": "#/components/schemas/Stats"
           },
+          "branchCount": {
+            "type": "integer"
+          },
           "branches": {
             "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/Branch"
+            }
+          },
+          "export": {
+            "type": "object",
+            "description": "Present only on the export route.",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "takenAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "remainingToday": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "key",
+          "expiresAt",
+          "limits"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string",
+            "description": "The base64 of 32 bytes. It encrypts every answer of this session."
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "requests": {
+                "type": "integer",
+                "examples": [
+                  150
+                ]
+              },
+              "bytes": {
+                "type": "integer",
+                "examples": [
+                  98304
+                ]
+              }
             }
           }
         }
