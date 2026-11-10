@@ -2,7 +2,7 @@
 
 VTU scheme tables as JSON, for the 2022 and 2025 regulations.
 
-[Calculator](https://vtu.drshn.tech/calculator) | [Endpoint reference](DOCS.md) | [OpenAPI spec](openapi.json) | [Terms of use](TERMS.md)
+[Calculator](https://vtu.drshn.tech/calculator) | [Dashboard](https://dev.vtu.drshn.tech) | [Endpoint reference](DOCS.md) | [OpenAPI spec](openapi.json) | [Terms of use](TERMS.md)
 
 ---
 
@@ -36,10 +36,30 @@ free to use and needs no account.
 
 ## Quick start
 
-No key, no signup, no token.
+No key for the metadata, no signup, no token.
 
 ```bash
-curl https://vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3
+curl https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs
+```
+
+```json
+{
+  "scheme": "2022",
+  "key": "cs",
+  "name": "Computer Science",
+  "stats": { "semesters": 6, "courses": 40, "credits": 120 },
+  "semesters": {
+    "3": { "courses": 8, "credits": 21 },
+    "4": { "courses": 9, "credits": 19 }
+  }
+}
+```
+
+The course list needs a developer key:
+
+```bash
+curl https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3 \
+  -H "X-API-Key: your-key"
 ```
 
 ```json
@@ -79,21 +99,50 @@ Every branch is listed with its semesters. Every semester is listed with its
 courses. Every course carries a code, a title, a credit count and the course
 category printed in the scheme.
 
+## Access
+
+Three levels. Nothing here needs a signup to try, but the course level data
+needs a key.
+
+| Level | What it opens | How |
+| --- | --- | --- |
+| Open | The scheme list, the grade scale, the branch list, the credit totals of each semester | Nothing. Just call it |
+| Key | The courses of one semester | `X-API-Key: your-key` |
+| Key | The whole scheme in one answer, five times a day | `X-API-Key: your-key` |
+
+Ask for a key and it is sent to you. It is a line of text and it never
+appears in the browser of your users.
+
+### How the calculator reads the data
+
+The web calculator does not use a key. The calculator page mints a short lived
+token, the browser exchanges it for a session, and every answer comes back
+encrypted with AES-GCM for that session. A session has a request budget, a
+data budget and a life of thirty minutes.
+
+That is what keeps the public site from being a machine that hands out the
+whole scheme. It is a control on how fast and how often the data can be
+taken, not a claim that taking it is impossible. If you want the data at
+speed, ask for a key.
+
 ## Endpoints at a glance
 
 | Method | Path | Returns |
 | --- | --- | --- |
 | GET | `/api` | The schemes and their totals |
 | GET | `/api/schemes` | The same, with the grade scale and the percentage rule |
-| GET | `/api/schemes/{scheme}` | One scheme, complete |
-| GET | `/api/schemes/{scheme}/branches` | The branch list of a scheme |
+| GET | `/api/schemes/{scheme}` | One scheme, its rules and its totals |
+| GET | `/api/schemes/{scheme}/branches` | The branch list of a scheme, paginated |
 | GET | `/api/schemes/{scheme}/branches/{branch}` | One branch, with its semester totals |
 | GET | `/api/schemes/{scheme}/branches/{branch}/semesters/{semester}` | The courses of one semester |
+| GET | `/api/schemes/{scheme}/export` | The whole scheme, five times a day for one key |
+| POST | `/api/session` | A session for the calculator, encrypted answers |
 
 `{scheme}` is `2022` or `2025`. `{branch}` is the key from the branch list.
 `{semester}` is the number from the branch response.
 
-Full request and response shapes are in [DOCS.md](DOCS.md).
+Full request and response shapes are in [DOCS.md](DOCS.md), and the machine
+readable version is [openapi.json](openapi.json).
 
 ## The rules
 
@@ -124,17 +173,35 @@ The grade scale and all three formulas are also served as JSON from
 [`/api/schemes`](DOCS.md#get-apischemes), so a client can read the rules from
 the API instead of hardcoding them.
 
+## Limits
+
+Every answer carries the limit headers `X-RateLimit-Limit`,
+`X-RateLimit-Remaining` and `X-RateLimit-Reset`. A call over the limit gets a
+429 and a `Retry-After`.
+
+| Caller | Calls |
+| --- | --- |
+| An address, no key | 120 a minute, 10000 a day |
+| A calculator session | 150 calls and 96 KB of data, for 30 minutes |
+| A developer key | 600 a minute, 100000 a day, and five bulk exports a day |
+
+Reading one semester of one branch is a handful of calls. Reading every
+semester of every branch is a walk, and a walk is counted, slowed down and
+logged. Use the export route if you need everything.
+
 ## Use it in your stack
 
-Every response carries `Access-Control-Allow-Origin: *`, so a browser can call
-it directly. Every response carries a one day `Cache-Control`, so you can put
-it behind your own cache or a CDN.
+Metadata answers are CORS enabled, so a browser can call them directly, and
+they are cached for a day. The course answers carry `Cache-Control: private,
+no-store`, so a shared cache cannot hand a course list to somebody who was not
+allowed to read it.
 
 ### JavaScript
 
 ```js
 const res = await fetch(
-  "https://vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3",
+  "https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3",
+  { headers: { "X-API-Key": process.env.MKS_KEY } },
 );
 const { courses } = await res.json();
 ```
@@ -142,10 +209,12 @@ const { courses } = await res.json();
 ### Python
 
 ```python
+import os
 import requests
 
 data = requests.get(
-    "https://vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3"
+    "https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3",
+    headers={"X-API-Key": os.environ["MKS_KEY"]},
 ).json()
 
 for course in data["courses"]:
@@ -155,7 +224,8 @@ for course in data["courses"]:
 ### Generate a client
 
 [`openapi.json`](openapi.json) is an OpenAPI 3.1 description of every
-endpoint. Point your favourite generator at it.
+endpoint, including the key header and the error shape. Point your favourite
+generator at it.
 
 ```bash
 npx @openapitools/openapi-generator-cli generate \
@@ -201,12 +271,12 @@ appreciated but never required.
 
 A few requests to keep the service healthy:
 
-- Cache responses. They are stable and already carry a one day cache header.
+- Cache the metadata. It is stable and already carries a one day cache header.
 - Do not mirror the dataset as a bulk download. Fetch what your app needs
   through the API, the way it is meant to be used.
-- Be reasonable with request volume. If you need the whole scheme in one
-  request, use `/api/schemes/{scheme}` rather than looping over every branch
-  and semester.
+- If you need the whole scheme, use the export route instead of looping over
+  every branch and every semester. It is one call with a budget.
+- Be reasonable with request volume. The limits above are the guide.
 
 More detail is in [TERMS.md](TERMS.md).
 
@@ -227,9 +297,11 @@ is reading.
 | --- | --- |
 | 2022 scheme | Semesters 3 to 8, 43 branches |
 | 2025 scheme | Semesters 3 to 8, 44 branches |
-| Cache lifetime | 1 day |
-| Authentication | None |
-| Rate limit | None published, please be reasonable |
+| API host | https://dev.vtu.drshn.tech/api |
+| Metadata cache | 1 day |
+| Course answers | Not cached |
+| Authentication | A key for the course level data, none for the metadata |
+| Rate limit | 120 a minute from an address without a key, 600 with one |
 
 The 2025 regulation publishes semesters 3 to 8 only. Not every branch has
 every semester, and the 2025 Computer Science semester 8 is an internship
@@ -246,7 +318,7 @@ The API itself is licensed for use by anyone, for any purpose, under the
 ## Links
 
 - Calculator: <https://vtu.drshn.tech/calculator>
-- Documentation site: <https://vtu.drshn.tech/docs>
+- API dashboard: <https://dev.vtu.drshn.tech>
 - Endpoint reference: [DOCS.md](DOCS.md)
 - OpenAPI spec: [openapi.json](openapi.json)
 - Terms of use: [TERMS.md](TERMS.md)
