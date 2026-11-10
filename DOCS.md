@@ -30,6 +30,33 @@ A key is sent in the `X-API-Key` header. A calculator session is sent in the
 `X-Marksheet-Session` header, and the answer comes back encrypted for that
 session.
 
+## Getting a key
+
+The dashboard at `https://dev.vtu.drshn.tech` is where a key is made.
+
+1. Sign in with Google.
+2. Open the keys page, `https://dev.vtu.drshn.tech/dashboard/keys`.
+3. Give the key a name and create it.
+4. Copy it. It is shown once, and only its hash is kept.
+
+The plain key is never sent back. If it is lost, make another one.
+
+```bash
+curl https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3 \
+  -H "X-API-Key: your-key"
+```
+
+### Managing keys with the API
+
+The dashboard drives these routes, and they can be driven by a script too.
+They need the session cookie of a signed in account.
+
+| Method | Path | What it does |
+| --- | --- | --- |
+| GET | `/api/keys` | The keys of the signed in account |
+| POST | `/api/keys` | Makes a key. The answer carries the plain key, once |
+| DELETE | `/api/keys/{id}` | Throws a key away. It stops working at once |
+
 ## Endpoints
 
 ### GET /api
@@ -293,6 +320,10 @@ Every error has the same shape.
 | 413 | The answer would be larger than the service will send in one piece |
 | 429 | The limit was reached |
 | 500 | Something went wrong while building the answer |
+
+The dashboard routes answer with the same shape. A route that needs a
+signed in account answers `401` with the code `not_signed_in`, and one that
+needs an administrator answers `403` with the code `not_allowed`.
 
 The message names the missing value and nothing else. No file path, no stack,
 no server detail.

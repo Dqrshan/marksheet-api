@@ -30,7 +30,9 @@ There is no fee. The course level data needs a key, and a key is free.
 
 A key is sent in the `X-API-Key` header. It is a line of text, it never
 belongs in code that runs in somebody else's browser, and it can be replaced
-at any time.
+at any time. Keys are made in the dashboard at `https://dev.vtu.drshn.tech`,
+where you sign in with Google. The plain key is shown once and only its hash
+is kept, so a lost key cannot be looked up and has to be replaced.
 
 The calculator uses a session instead of a key. A session is short lived, has
 a request budget and a data budget, and every answer for it comes back
@@ -99,11 +101,16 @@ and lost goodwill, however that loss arises.
 
 ## Privacy
 
-The API does not set cookies and does not collect personal data. Server logs
-record the requested path, the client address, the status and the size of the
-answer, as any web server does. They are used to keep the service running and
-to find abuse. A key is never written to a log. The key of a session is never
-written to a log.
+The API does not set cookies and does not collect personal data. The
+dashboard signs you in with Google and keeps a session cookie of its own,
+which holds your address and nothing else. Server logs record the requested
+path, the client address, the status and the size of the answer, as any web
+server does. They are used to keep the service running and to find abuse. A
+key is never written to a log. The key of a session is never written to a
+log.
+
+A support message is kept until it has been read. It holds the name, the
+address and the text you wrote.
 
 ## Changes
 

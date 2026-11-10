@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "marksheet API",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "summary": "The VTU scheme tables for the 2022 and 2025 regulations, as JSON.",
-    "description": "Every response is CORS enabled, and the metadata responses are cached for a day.\n\nThe scheme list, the grade scale, the branch list and the credit totals of each semester are open. The courses of a semester need a developer key or a calculator session. The whole scheme in one answer needs a key.\n\nThe data is the same set the [marksheet calculator](https://vtu.drshn.tech/calculator) uses: branch list, semester list, and every course with its code, title, credits and course type.",
+    "description": "Every response is CORS enabled, and the metadata responses are cached for a day.\n\nThe scheme list, the grade scale, the branch list and the credit totals of each semester are open. The courses of a semester need a developer key or a calculator session. The whole scheme in one answer needs a key.\n\nA key is made in the dashboard at https://dev.vtu.drshn.tech/dashboard/keys. You sign in with Google, give the key a name, and it is shown once.\n\nThe data is the same set the [marksheet calculator](https://vtu.drshn.tech/calculator) uses: branch list, semester list, and every course with its code, title, credits and course type.",
     "termsOfService": "https://dev.vtu.drshn.tech/terms",
     "contact": {
       "name": "marksheet",
@@ -42,6 +42,14 @@
     {
       "name": "Sessions",
       "description": "The session the calculator uses."
+    },
+    {
+      "name": "Keys",
+      "description": "The developer keys of a signed in account."
+    },
+    {
+      "name": "Support",
+      "description": "Messages for the people who run the service."
     }
   ],
   "paths": {
@@ -1062,6 +1070,606 @@
         }
       }
     },
+    "/api/keys": {
+      "get": {
+        "tags": [
+          "Keys"
+        ],
+        "summary": "The keys of the signed in account",
+        "operationId": "listKeys",
+        "description": "Every key the signed in account owns. The plain key is never in the answer, only the first few characters.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The keys of the account.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "private, no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "type": "object"
+                    },
+                    "store": {
+                      "type": "boolean"
+                    },
+                    "keys": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/KeySummary"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A key or a session is needed for this route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
+            }
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Keys"
+        ],
+        "summary": "Make a key",
+        "operationId": "createKey",
+        "description": "Makes a key for the signed in account. The plain key is in the answer and nowhere else, so it is shown once.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "A name for the key, so it can be recognised later.",
+                    "examples": [
+                      "My student club tool"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new key, with the plain text in `secret`.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "private, no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "$ref": "#/components/schemas/KeySummary"
+                    },
+                    "secret": {
+                      "type": "string",
+                      "description": "The plain key. It is shown once."
+                    },
+                    "notice": {
+                      "type": "string"
+                    },
+                    "durable": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A key or a session is needed for this route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
+            }
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/keys/{id}": {
+      "delete": {
+        "tags": [
+          "Keys"
+        ],
+        "summary": "Throw a key away",
+        "operationId": "revokeKey",
+        "description": "Removes a key of the signed in account. The key stops working at once.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The identifier of the key.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The key is gone.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "private, no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A key or a session is needed for this route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
+            }
+          },
+          "404": {
+            "description": "That key does not exist, or it is not yours.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "unknown_key",
+                "message": "That key does not exist, or it is not yours."
+              }
+            }
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/support": {
+      "post": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "Send a support message",
+        "operationId": "sendSupportMessage",
+        "description": "Keeps a message for the people who run the service. Nothing is sent anywhere.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subject",
+                  "message"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The message is kept.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "description": "The origin that asked, when it is on the allow list.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "How many calls are allowed in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "How many calls are left in the window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "When the window ends, as a unix time in seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "description": "How long to wait, in seconds. It is only sent with a 429.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Cache-Control": {
+                "description": "How long the answer may be cached.",
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "private, no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "durable": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A subject and a message are both needed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "missing_fields",
+                "message": "A subject and a message are both needed."
+              }
+            }
+          },
+          "401": {
+            "description": "A key or a session is needed for this route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "access_key_required",
+                "message": "A key or a session is needed for this route."
+              }
+            }
+          },
+          "429": {
+            "description": "Too many calls. The Retry-After header says how long to wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "rate_limited",
+                "message": "Too many calls. The Retry-After header says how long to wait."
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong while building that response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "server_error",
+                "message": "Something went wrong while building that response."
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/session": {
       "post": {
         "tags": [
@@ -1208,7 +1816,13 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key",
-        "description": "A developer key. Ask for one and it is sent in this header."
+        "description": "A developer key. Make one in the dashboard at https://dev.vtu.drshn.tech/dashboard/keys and it is sent in this header."
+      },
+      "SessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "mks_session",
+        "description": "The session of a signed in account, set when you sign in with Google at the dashboard."
       }
     },
     "schemas": {
@@ -1742,6 +2356,56 @@
                 "type": "integer"
               }
             }
+          }
+        }
+      },
+      "KeySummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "My student club tool"
+            ]
+          },
+          "prefix": {
+            "type": "string",
+            "description": "The first few characters of the key.",
+            "examples": [
+              "mks_9b618b75..."
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "perMinute": {
+            "type": "integer",
+            "examples": [
+              600
+            ]
+          },
+          "perDay": {
+            "type": "integer",
+            "examples": [
+              100000
+            ]
           }
         }
       },

@@ -2,7 +2,7 @@
 
 VTU scheme tables as JSON, for the 2022 and 2025 regulations.
 
-[Calculator](https://vtu.drshn.tech/calculator) | [Dashboard](https://dev.vtu.drshn.tech) | [Endpoint reference](DOCS.md) | [OpenAPI spec](openapi.json) | [Terms of use](TERMS.md)
+[Dashboard](https://dev.vtu.drshn.tech) | [Calculator](https://vtu.drshn.tech/calculator) | [Endpoint reference](DOCS.md) | [OpenAPI spec](openapi.json) | [Terms of use](TERMS.md)
 
 ---
 
@@ -55,7 +55,9 @@ curl https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs
 }
 ```
 
-The course list needs a developer key:
+The course list needs a developer key. Make one in the
+[dashboard](https://dev.vtu.drshn.tech/dashboard/keys) and send it in the
+header:
 
 ```bash
 curl https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3 \
@@ -110,8 +112,21 @@ needs a key.
 | Key | The courses of one semester | `X-API-Key: your-key` |
 | Key | The whole scheme in one answer, five times a day | `X-API-Key: your-key` |
 
-Ask for a key and it is sent to you. It is a line of text and it never
-appears in the browser of your users.
+## The dashboard
+
+The dashboard at [dev.vtu.drshn.tech](https://dev.vtu.drshn.tech) is where
+you make a key.
+
+1. Sign in with Google. That is the whole account.
+2. Give the key a name, so you know what it is for later.
+3. Copy the key. It is shown once, and only its hash is kept.
+4. Send it in the `X-API-Key` header.
+
+The dashboard also holds the endpoint reference, the terms of use and a
+support form. Keys can be removed at any time, and a removed key stops
+working at once.
+
+Nothing here needs a card, a fee or a request to a person.
 
 ### How the calculator reads the data
 
@@ -298,6 +313,8 @@ is reading.
 | 2022 scheme | Semesters 3 to 8, 43 branches |
 | 2025 scheme | Semesters 3 to 8, 44 branches |
 | API host | https://dev.vtu.drshn.tech/api |
+| Dashboard | https://dev.vtu.drshn.tech |
+| Sign in | Google, no password |
 | Metadata cache | 1 day |
 | Course answers | Not cached |
 | Authentication | A key for the course level data, none for the metadata |
@@ -319,6 +336,9 @@ The API itself is licensed for use by anyone, for any purpose, under the
 
 - Calculator: <https://vtu.drshn.tech/calculator>
 - API dashboard: <https://dev.vtu.drshn.tech>
+- Keys page: <https://dev.vtu.drshn.tech/dashboard/keys>
+- Terms page: <https://dev.vtu.drshn.tech/terms>
+- Support: <https://dev.vtu.drshn.tech/support>
 - Endpoint reference: [DOCS.md](DOCS.md)
 - OpenAPI spec: [openapi.json](openapi.json)
 - Terms of use: [TERMS.md](TERMS.md)
