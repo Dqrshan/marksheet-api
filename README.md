@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://dev.vtu.drshn.tech/logo-api.svg" width="56" height="56" alt="marksheet api">
+</p>
+
 # marksheet API
 
 VTU scheme tables as JSON, for the 2022 and 2025 regulations.
@@ -122,9 +126,10 @@ you make a key.
 3. Copy the key. It is shown once, and only its hash is kept.
 4. Send it in the `X-API-Key` header.
 
-The dashboard also holds the endpoint reference, the terms of use and a
-support form. Keys can be removed at any time, and a removed key stops
-working at once.
+The dashboard is a small application of its own. The navigation on the
+left carries the overview, the keys, the statistics, the endpoint
+reference, the terms of use and the support form. Keys can be removed at any
+time, and a removed key stops working at once.
 
 Nothing here needs a card, a fee or a request to a person.
 
@@ -337,8 +342,9 @@ The API itself is licensed for use by anyone, for any purpose, under the
 - Calculator: <https://vtu.drshn.tech/calculator>
 - API dashboard: <https://dev.vtu.drshn.tech>
 - Keys page: <https://dev.vtu.drshn.tech/dashboard/keys>
-- Terms page: <https://dev.vtu.drshn.tech/terms>
-- Support: <https://dev.vtu.drshn.tech/support>
+- Endpoint reference: <https://dev.vtu.drshn.tech/dashboard/docs>
+- Terms page: <https://dev.vtu.drshn.tech/dashboard/terms>
+- Support: <https://dev.vtu.drshn.tech/dashboard/support>
 - Endpoint reference: [DOCS.md](DOCS.md)
 - OpenAPI spec: [openapi.json](openapi.json)
 - Terms of use: [TERMS.md](TERMS.md)
