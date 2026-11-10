@@ -1,14 +1,17 @@
 """Fetch the courses of one semester and compute an SGPA from them.
 
-    python3 examples/python.py
+    MKS_KEY=your-key python3 examples/python.py
 
-Uses only the standard library, so there is nothing to install.
+Uses only the standard library, so there is nothing to install. The key is
+only needed for the course list, the metadata calls are open.
 """
 
 import json
+import os
 import urllib.request
 
-BASE = "https://vtu.drshn.tech/api"
+BASE = "https://dev.vtu.drshn.tech/api"
+KEY = os.environ.get("MKS_KEY", "your-key")
 
 GRADE_POINTS = [
     (90, 10),
@@ -29,9 +32,18 @@ def points_for(marks: float) -> int:
     return 0
 
 
-def get(path: str) -> dict:
-    with urllib.request.urlopen(f"{BASE}{path}") as response:
-        return json.load(response)
+def get(path: str, key: str | None = None) -> dict:
+    request = urllib.request.Request(f"{BASE}{path}")
+    if key:
+        request.add_header("X-API-Key", key)
+    try:
+        with urllib.request.urlopen(request) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        body = json.load(error)
+        raise SystemExit(
+            f"The API answered {error.code}: {body['error']['message']}"
+        ) from error
 
 
 scheme = "2022"
@@ -50,7 +62,9 @@ marks = {
     "BSCK307": 90,
 }
 
-payload = get(f"/schemes/{scheme}/branches/{branch}/semesters/{semester}")
+payload = get(
+    f"/schemes/{scheme}/branches/{branch}/semesters/{semester}", key=KEY
+)
 
 weighted = 0.0
 credits = 0

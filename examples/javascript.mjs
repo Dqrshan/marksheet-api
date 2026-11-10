@@ -1,12 +1,14 @@
 /**
  * Fetch the courses of one semester and compute an SGPA from them.
  *
- *   node examples/javascript.mjs
+ *   MKS_KEY=your-key node examples/javascript.mjs
  *
- * No dependencies, no key, no token.
+ * No dependencies. The key is only needed for the course list, the
+ * metadata calls are open.
  */
 
-const BASE = "https://vtu.drshn.tech/api";
+const BASE = "https://dev.vtu.drshn.tech/api";
+const KEY = process.env.MKS_KEY ?? "your-key";
 
 const GRADE_POINTS = [
   [90, 10],
@@ -39,7 +41,17 @@ const marks = {
 
 const response = await fetch(
   `${BASE}/schemes/${scheme}/branches/${branch}/semesters/${semester}`,
+  { headers: { "X-API-Key": KEY } },
 );
+
+if (!response.ok) {
+  const body = await response.json().catch(() => null);
+  console.error(
+    `The API answered ${response.status}: ${body?.error?.message ?? "no reason given"}`,
+  );
+  process.exit(1);
+}
+
 const { courses } = await response.json();
 
 let weighted = 0;
