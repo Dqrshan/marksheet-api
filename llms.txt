@@ -1,0 +1,47 @@
+# marksheet API
+
+> The VTU scheme tables for the 2022 and 2025 regulations, as JSON. Branches, semesters, courses, credits and the course types of every branch, extracted from the official VTU scheme PDFs and checked against the credit totals those PDFs print.
+
+The API is read only and free. The metadata is open. The course level data
+needs a developer key, which is made in the dashboard by signing in with
+Google.
+
+## Endpoints
+
+- [GET /api](https://dev.vtu.drshn.tech/api): The scheme index, with the regulation code, the semester range and the totals of each scheme.
+- [GET /api/schemes](https://dev.vtu.drshn.tech/api/schemes): The same, with the grade scale and the percentage rule attached to each scheme.
+- [GET /api/schemes/{scheme}](https://dev.vtu.drshn.tech/api/schemes/2022): One scheme, its rules and its totals. `{scheme}` is 2022 or 2025.
+- [GET /api/schemes/{scheme}/branches](https://dev.vtu.drshn.tech/api/schemes/2022/branches): The branch list of a scheme, with the course and credit totals of each branch. Paginated with `limit` (50 by default, 200 at most) and `offset`.
+- [GET /api/schemes/{scheme}/branches/{branch}](https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs): One branch, with the course count and the credit total of each of its semesters.
+- [GET /api/schemes/{scheme}/branches/{branch}/semesters/{semester}](https://dev.vtu.drshn.tech/api/schemes/2022/branches/cs/semesters/3): The courses of one semester, with the code, the title, the credits and the course type. Needs a key or a calculator session.
+- [GET /api/schemes/{scheme}/export](https://dev.vtu.drshn.tech/api/schemes/2022/export): The whole scheme in one answer. Needs a key, five times a day.
+- [POST /api/session](https://dev.vtu.drshn.tech/api/session): Opens a session for the calculator. A POST with the page token in the `X-Marksheet-Page-Token` header. Every later answer for that session comes back encrypted with AES-GCM.
+
+## Authentication
+
+- Metadata endpoints need nothing.
+- The course level endpoints need a developer key in the `X-API-Key` header.
+- A key is made at [the keys page](https://dev.vtu.drshn.tech/dashboard/keys) after signing in with Google. The plain key is shown once and only its hash is kept.
+- The web calculator uses a session instead of a key. The calculator page signs a short lived token, the browser exchanges it for a session, and every answer for that session is encrypted for it.
+
+## The rules
+
+- Grade scale, the same in both schemes: O 90 to 100 is 10 points, A+ 80 to 89 is 9, A 70 to 79 is 8, B+ 60 to 69 is 7, B 55 to 59 is 6, C 50 to 54 is 5, P 40 to 49 is 4, F below 40 is 0.
+- SGPA is the sum of the credits of the courses times the points of their grades, divided by the sum of the credits of the semester. Courses with no credits are left out.
+- CGPA is the sum of the credits of the semesters times the SGPA of each semester, divided by the sum of the credits of the semesters. Each semester SGPA is rounded to two decimals first.
+- Percentage is the CGPA multiplied by ten. Regulation 22OB clause 6.7 and regulation 25OB clause 26.0 define it that way.
+
+## Limits
+
+- An address without a key: 120 calls a minute and 10000 a day.
+- A calculator session: 150 calls and 96 KB of data, for 30 minutes.
+- A developer key: 600 calls a minute, 100000 a day, and five bulk exports a day.
+- Every answer carries `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. A call over the limit answers 429 with `Retry-After`.
+
+## More
+
+- [The endpoint reference](https://dev.vtu.drshn.tech/dashboard/docs): Every route with its parameters, its access level and a sample answer.
+- [The terms of use](https://dev.vtu.drshn.tech/dashboard/terms): What the API is free to be used for, and what the fair use is.
+- [The calculator](https://vtu.drshn.tech/calculator): The same tables behind a calculator, for a student with a marks card.
+- [openapi.json](https://github.com/Dqrshan/marksheet-api/blob/main/openapi.json): The OpenAPI 3.1 description of every route, ready for a client generator.
+- [The examples](https://github.com/Dqrshan/marksheet-api/tree/main/examples): curl, JavaScript and Python, each one computing an SGPA from the answer.

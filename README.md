@@ -337,6 +337,17 @@ license, see [LICENSE](LICENSE).
 The API itself is licensed for use by anyone, for any purpose, under the
 [API Use Grant](TERMS.md). The scheme data is served only through the API.
 
+## For an assistant
+
+[llms.txt](llms.txt) is a plain markdown description of the API: what it is,
+every endpoint, how the access levels work and the three formulae. Point an
+assistant at it and it will describe the API correctly.
+
+The same file is served at
+[https://dev.vtu.drshn.tech/llms.txt](https://dev.vtu.drshn.tech/llms.txt)
+for the live service, and the calculator has one of its own at
+[https://vtu.drshn.tech/llms.txt](https://vtu.drshn.tech/llms.txt).
+
 ## Links
 
 - Calculator: <https://vtu.drshn.tech/calculator>
